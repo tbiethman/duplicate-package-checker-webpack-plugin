@@ -1,7 +1,7 @@
 var path = require("path");
 var findRoot = require("find-root");
 var chalk = require("chalk");
-var _ = require("lodash");
+var _groupBy = require("lodash.groupby");
 var semver = require("semver");
 
 const defaults = {
@@ -13,7 +13,7 @@ const defaults = {
 };
 
 function DuplicatePackageCheckerPlugin(options) {
-  this.options = _.extend({}, defaults, options);
+  this.options = Object.assign({}, defaults, options);
 }
 
 function cleanPath(path) {
@@ -53,6 +53,7 @@ DuplicatePackageCheckerPlugin.prototype.apply = function(compiler) {
   let emitError = this.options.emitError;
   let exclude = this.options.exclude;
   let strict = this.options.strict;
+  let alwaysEmitErrorsFor = this.options.alwaysEmitErrorsFor || [];
 
   compiler.hooks.emit.tapAsync("DuplicatePackageCheckerPlugin", function(
     compilation,
@@ -96,7 +97,7 @@ DuplicatePackageCheckerPlugin.prototype.apply = function(compiler) {
 
       modules[pkg.name] = modules[pkg.name] || [];
 
-      let isSeen = _.find(modules[pkg.name], module => {
+      let isSeen = modules[pkg.name].find(module => {
         return module.version === version;
       });
 
@@ -125,12 +126,12 @@ DuplicatePackageCheckerPlugin.prototype.apply = function(compiler) {
       let filtered = instances;
       if (!strict) {
         filtered = [];
-        const groups = _.groupBy(instances, instance =>
-          semver.major(instance.version)
-        );
+        const groups =
+          _groupBy(instances, instance => semver.major(instance.version)) || {};
 
-        _.each(groups, group => {
-          if (group.length > 1) {
+        Object.keys(groups).forEach(groupKey => {
+          const group = groups[groupKey];
+          if (group && group.length > 1) {
             filtered = filtered.concat(group);
           }
         });
@@ -157,15 +158,16 @@ DuplicatePackageCheckerPlugin.prototype.apply = function(compiler) {
     const duplicateCount = Object.keys(duplicates).length;
 
     if (duplicateCount) {
-      let array = emitError ? compilation.errors : compilation.warnings;
-
-      let i = 0;
-
       let sortedDuplicateKeys = Object.keys(duplicates).sort();
 
-      sortedDuplicateKeys.map(name => {
-        let instances = duplicates[name].sort(
-          (a, b) => (a.version < b.version ? -1 : 1)
+      sortedDuplicateKeys.map((name, index) => {
+        let array =
+          emitError || alwaysEmitErrorsFor.indexOf(name) >= 0
+            ? compilation.errors
+            : compilation.warnings;
+
+        let instances = duplicates[name].sort((a, b) =>
+          a.version < b.version ? -1 : 1
         );
 
         let error =
@@ -185,7 +187,7 @@ DuplicatePackageCheckerPlugin.prototype.apply = function(compiler) {
         });
         error += `    ${instances.join("\n    ")}\n`;
         // only on last warning
-        if (showHelp && ++i === duplicateCount) {
+        if (showHelp && index === duplicateCount - 1) {
           error += `\n${chalk.white.bold(
             "Check how you can resolve duplicate packages: "
           )}\nhttps://github.com/darrenscerri/duplicate-package-checker-webpack-plugin#resolving-duplicate-packages-in-your-bundle\n`;

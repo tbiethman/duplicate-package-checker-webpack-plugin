@@ -1,10 +1,8 @@
 # 🕵 duplicate-package-checker-webpack-plugin
 
-[![NPM version][npm-image]][npm-url] [![Downloads][downloads-image]][npm-url] [![Build Status](https://travis-ci.org/darrenscerri/duplicate-package-checker-webpack-plugin.svg?branch=master)](https://travis-ci.org/darrenscerri/duplicate-package-checker-webpack-plugin)
+[![NPM version][npm-image]][npm-url] [![Downloads][downloads-image]][npm-url] [![Build Status](https://travis-ci.org/cerner/duplicate-package-checker-webpack-plugin.svg?branch=master)](https://travis-ci.org/cerner/duplicate-package-checker-webpack-plugin)
 
 Webpack plugin that warns when your bundle contains multiple versions of the same package.
-
-![duplicate-package-checker-webpack-plugin](https://raw.githubusercontent.com/darrenscerri/duplicate-package-checker-webpack-plugin/master/screenshot.png)
 
 ## Why?
 
@@ -55,9 +53,9 @@ new DuplicatePackageCheckerPlugin({
    * @param {?string} instance.issuer Absolute path to the module that requested the package
    * @returns {boolean} true to exclude the instance, false otherwise
    */
-  exclude(instance) {
-    return instance.name === "fbjs";
-  }
+  exclude: instance => instance.name === "fbjs",
+  // Emit errors (regardless of emitError value) when the specified packages are duplicated (default: [])
+  alwaysEmitErrorsFor: ['react', 'react-router'],
 });
 ```
 
